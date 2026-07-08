@@ -12,11 +12,11 @@ This is a known, hard-to-fix limitation of clangd (see [clangd/clangd#123](https
 
 ## Install
 
-Download a prebuilt binary from the [Releases](../../releases) page, or build from source (requires [Go](https://go.dev/dl/) 1.21+):
-
 ```bash
-go build -o headergen .
+go install github.com/alpakaDurumi/compile-commands-headergen/cmd/headergen@latest
 ```
+
+Or you can Download prebuilt binaries from the [Releases](../../releases) page.
 
 ## Usage
 
