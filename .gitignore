@@ -1,0 +1,12 @@
+# Compiled binaries
+headergen
+headergen.exe
+*.exe
+
+# Go build/test artifacts
+*.test
+*.out
+
+# OS
+.DS_Store
+Thumbs.db
