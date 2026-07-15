@@ -16,6 +16,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -122,39 +123,46 @@ func run(ccPath string, pairs []pair) error {
 		return fmt.Errorf("parsing %s: %w", ccPath, err)
 	}
 
-	// Index existing entries by normalized file path for quick lookup.
-	byFile := make(map[string]Entry)
-	present := make(map[string]bool)
+	byAbs := make(map[string]Entry)
 	for _, e := range entries {
-		key := normalize(e.File)
-		byFile[key] = e
-		present[key] = true
+		abs, err := entryAbsPath(e)
+		if err != nil {
+			return fmt.Errorf("resolving entry %q: %w", e.File, err)
+		}
+		byAbs[normalize(abs)] = e
 	}
 
 	changed := false
 	for _, p := range pairs {
-		headerKey := normalize(p.header)
-		sourceKey := normalize(p.source)
+		headerAbs, err := filepath.Abs(p.header)
+		if err != nil {
+			return fmt.Errorf("resolving header %q: %w", p.header, err)
+		}
+		sourceAbs, err := filepath.Abs(p.source)
+		if err != nil {
+			return fmt.Errorf("resolving source %q: %w", p.source, err)
+		}
 
-		if present[headerKey] {
+		headerKey := normalize(headerAbs)
+		if _, ok := byAbs[headerKey]; ok {
 			fmt.Printf("skip: %s already has an entry\n", p.header)
 			continue
 		}
 
-		donor, ok := byFile[sourceKey]
+		donor, ok := byAbs[normalize(sourceAbs)]
 		if !ok {
-			return fmt.Errorf("no compile_commands.json entry found for source %q (looked for suffix match on %q)", p.source, sourceKey)
+			return fmt.Errorf("no compile_commands.json entry found for source %q (resolved to %q)", p.source, sourceAbs)
 		}
 
-		cmd := retarget(donor.Command, p.header)
+		cmd := retarget(donor.Command, headerAbs)
 
 		newEntry := Entry{
 			Directory: donor.Directory,
 			Command:   cmd,
-			File:      p.header,
+			File:      headerAbs,
 		}
 		entries = append(entries, newEntry)
-		present[headerKey] = true
+		byAbs[headerKey] = newEntry
 		changed = true
 		fmt.Printf("added: %s (donor: %s)\n", p.header, p.source)
 	}
@@ -174,10 +182,18 @@ func run(ccPath string, pairs []pair) error {
 }
 
 // normalize makes paths comparable regardless of slash direction or case
-// (Windows paths are case-insensitive), and compares by suffix so that a
-// relative path on the command line can match an absolute path in the JSON.
+// (Windows paths are case-insensitive).
 func normalize(p string) string {
 	return strings.ToLower(strings.ReplaceAll(p, "\\", "/"))
+}
+
+// entryAbsPath resolves an entry's file to an absolute path. Per the JSON
+// Compilation Database spec, "file" may be relative to "directory".
+func entryAbsPath(e Entry) (string, error) {
+	if filepath.IsAbs(e.File) {
+		return filepath.Clean(e.File), nil
+	}
+	return filepath.Abs(filepath.Join(e.Directory, e.File))
 }
 
 // retarget replaces the trailing input file (after the final " -- ", if
