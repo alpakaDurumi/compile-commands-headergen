@@ -12,11 +12,11 @@ This is a known, hard-to-fix limitation of clangd (see [clangd/clangd#123](https
 
 ## Install
 
+You need to install [Go](https://go.dev/)
+
 ```bash
 go install github.com/alpakaDurumi/compile-commands-headergen/cmd/headergen@latest
 ```
-
-Or you can Download prebuilt binaries from the [Releases](../../releases) page.
 
 ## Usage
 
@@ -26,7 +26,7 @@ headergen --pair "path/to/header.h=path/to/source.cpp" build/compile_commands.js
 
 - `--pair` can be repeated to patch multiple headers
 - Already-patched headers are left untouched (safe to re-run)
-- Paths can be relative or absolute; matching is done by normalized suffix (case-insensitive, slash-insensitive)
+- Paths can be relative or absolute
 
 ### Watch mode
 
