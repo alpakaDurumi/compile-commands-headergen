@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strings"
 	"time"
 )
@@ -57,10 +58,16 @@ func main() {
 	var pairs pairFlag
 	flag.Var(&pairs, "pair", "header=source mapping (repeatable)")
 	watch := flag.Bool("watch", false, "watch compile_commands.json and re-patch whenever it changes (e.g. after every CMake configure)")
+	version := flag.Bool("version", false, "print version and exit")
 	flag.Parse()
 
+	if *version {
+		fmt.Println(versionString())
+		return
+	}
+
 	if flag.NArg() != 1 {
-		fmt.Fprintln(os.Stderr, "usage: headergen [--watch] [--pair header=source ...] <compile_commands.json>")
+		fmt.Fprintln(os.Stderr, "usage: headergen [--watch] [--version] [--pair header=source ...] <compile_commands.json>")
 		os.Exit(2)
 	}
 	if len(pairs.pairs) == 0 {
@@ -79,6 +86,18 @@ func main() {
 		fmt.Fprintln(os.Stderr, "error:", err)
 		os.Exit(1)
 	}
+}
+
+// versionString reports the module version this binary was built at. When
+// installed via "go install .../headergen@vX.Y.Z", Go embeds that version in
+// the binary automatically; a plain "go build" from a local checkout has no
+// such version and reports "(devel)".
+func versionString() string {
+	info, ok := debug.ReadBuildInfo()
+	if !ok || info.Main.Version == "" {
+		return "headergen: unknown version"
+	}
+	return fmt.Sprintf("headergen %s", info.Main.Version)
 }
 
 // watchAndPatch polls ccPath for modification-time changes and re-runs the
